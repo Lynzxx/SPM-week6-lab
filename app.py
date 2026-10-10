@@ -16,7 +16,7 @@ PAGE = """<!doctype html>
     <label for="days">Days late</label>
     <input id="days" name="days" type="number" min="0" value="{{ days }}">
     <label>
-      <input name="deluxe" type="checkbox" value="1" {% if deluxe %}checked{% endif %}>
+      <input name="deluxe" type="checkbox" {% if deluxe %}checked{% endif %}>
       Deluxe duck
     </label>
     <button type="submit">Check fine</button>
