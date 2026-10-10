@@ -94,10 +94,10 @@ jobs:
     steps:
       - run: echo "Deploy to staging goes here (Part 4)"
 
-  # Production only ever deploys what is on main, never an unmerged PR.
+  # Runs for pull requests too; the production environment's required
+  # reviewer must approve it before it deploys.
   production:
     needs: staging
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     steps:
