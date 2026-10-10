@@ -86,9 +86,40 @@ jobs:
           cd ..
           bash smoke.sh http://localhost:5000 || { cat app.log; exit 1; }
 
+  # Browser test against the package, like smoke. Only the test code and
+  # Playwright come from outside the zip; the app and Flask come from staged/.
+  e2e:
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v4
+        with:
+          name: quackloan-deployment-package
+      - name: Install Playwright and Chromium
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Run the artifact (not the source) and browser-test it
+        run: |
+          unzip -q quackloan.zip -d staged
+          cd staged
+          python -m flask --app app run > ../app.log 2>&1 &
+          cd ..
+          for i in $(seq 1 20); do
+            curl -fs http://localhost:5000/health > /dev/null && break
+            [ "$i" = 20 ] && { echo "App did not start"; cat app.log; exit 1; }
+            sleep 1
+          done
+          E2E_BASE_URL=http://localhost:5000 python -m unittest discover -s e2e -v \
+            || { cat app.log; exit 1; }
+
   # Runs for pull requests too, so a change can be tried in staging before merging.
   staging:
-    needs: smoke
+    needs: [ smoke, e2e ]
     runs-on: ubuntu-latest
     environment: staging
     steps:
