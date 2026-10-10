@@ -13,3 +13,7 @@ env/
 *.egg-info/
 dist/
 build/
+
+staged/
+*.zip
+app.log
