@@ -45,7 +45,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          # Lines 59-62 then upload quackloan.zip as an artifact named quackloan-deployment-package.
+      # The only place the zip is built; later jobs download this exact file.
       - name: Build the deployable zip
         run: |
           pip install -r requirements.txt -t build/
@@ -57,6 +57,7 @@ jobs:
           path: build/
           format: spdx-json
           artifact-name: sbom.spdx.json
+      # Save the zip as an artifact named quackloan-deployment-package.
       - uses: actions/upload-artifact@v4
         with:
           name: quackloan-deployment-package
@@ -70,15 +71,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          # The download is at pipeline.yml:72-74
+      # Download the zip built by the package job.
       - uses: actions/download-artifact@v4
-      # the run step is at lines 75-81
         with:
           name: quackloan-deployment-package
+      # The key line is `cd staged`: Flask starts inside the unzipped folder,
+      # so --app app loads the app.py from the zip, and Flask and apig-wsgi
+      # are also loaded from inside the zip, not from the source checkout.
       - name: Run the artifact (not the source) and smoke-test it
-      # The key line is cd staged: Flask starts from inside the unzipped folder, 
-      # so --app app loads the app.py that came out of the zip. Flask and apig-wsgi are 
-      # also loaded from inside the zip.
         run: |
           unzip -q quackloan.zip -d staged
           cd staged
