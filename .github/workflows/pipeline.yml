@@ -8,30 +8,30 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - run: pip install ruff
       - run: ruff check .
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - run: pip install -r requirements.txt
       - run: python -m unittest discover -v
 
   audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - run: pip install pip-audit
@@ -39,10 +39,10 @@ jobs:
 
   package:
     needs: [ lint, test, audit ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       # The only place the zip is built; later jobs download this exact file.
@@ -58,21 +58,21 @@ jobs:
           format: spdx-json
           artifact-name: sbom.spdx.json
       # Save the zip as an artifact named quackloan-deployment-package.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: quackloan-deployment-package
           path: quackloan.zip
 
   smoke:
     needs: package
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       # Download the zip built by the package job.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: quackloan-deployment-package
       # The key line is `cd staged`: Flask starts inside the unzipped folder,
@@ -90,13 +90,13 @@ jobs:
   # Playwright come from outside the zip; the app and Flask come from staged/.
   e2e:
     needs: package
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: quackloan-deployment-package
       - name: Install Playwright and Chromium
@@ -121,7 +121,7 @@ jobs:
   staging:
     needs: [ smoke, e2e ]
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: staging
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -129,8 +129,8 @@ jobs:
       AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
       AWS_DEFAULT_REGION: us-east-1
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: quackloan-deployment-package
       - name: Deploy the same zip
@@ -147,7 +147,7 @@ jobs:
   # Waits for the production environment's required reviewer to approve.
   production:
     needs: staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: production
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -155,8 +155,8 @@ jobs:
       AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
       AWS_DEFAULT_REGION: us-east-1
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: quackloan-deployment-package
       - name: Deploy the same zip
