@@ -117,19 +117,55 @@ jobs:
           E2E_BASE_URL=http://localhost:5000 python -m unittest discover -s e2e -v \
             || { cat app.log; exit 1; }
 
-  # Runs for pull requests too, so a change can be tried in staging before merging.
+  # Real deploys happen only after a merge to main (push), never from a PR.
   staging:
     needs: [ smoke, e2e ]
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: staging
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_DEFAULT_REGION: us-east-1
     steps:
-      - run: echo "Deploy to staging goes here (Part 4)"
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: quackloan-deployment-package
+      - name: Deploy the same zip
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ vars.FUNCTION_NAME }}" \
+            --zip-file fileb://quackloan.zip \
+            --query CodeSha256 --output text
+          aws lambda wait function-updated \
+            --function-name "${{ vars.FUNCTION_NAME }}"
+      - name: Smoke-test what was deployed
+        run: bash smoke.sh "${{ vars.FUNCTION_URL }}"
 
-  # Runs for pull requests too; the production environment's required
-  # reviewer must approve it before it deploys.
+  # Waits for the production environment's required reviewer to approve.
   production:
     needs: staging
     runs-on: ubuntu-latest
     environment: production
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_DEFAULT_REGION: us-east-1
     steps:
-      - run: echo "Deploy to production goes here (Part 4)"
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: quackloan-deployment-package
+      - name: Deploy the same zip
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ vars.FUNCTION_NAME }}" \
+            --zip-file fileb://quackloan.zip \
+            --query CodeSha256 --output text
+          aws lambda wait function-updated \
+            --function-name "${{ vars.FUNCTION_NAME }}"
+      - name: Smoke-test what was deployed
+        run: bash smoke.sh "${{ vars.FUNCTION_URL }}"
