@@ -86,16 +86,18 @@ jobs:
           cd ..
           bash smoke.sh http://localhost:5000 || { cat app.log; exit 1; }
 
+  # Runs for pull requests too, so a change can be tried in staging before merging.
   staging:
     needs: smoke
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: staging
     steps:
       - run: echo "Deploy to staging goes here (Part 4)"
 
+  # Production only ever deploys what is on main, never an unmerged PR.
   production:
     needs: staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     steps:
